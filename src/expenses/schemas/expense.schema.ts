@@ -22,6 +22,11 @@ export class Expense {
 
   @Prop({ required: true })
   owner: string;
+
+  // Flexible bag for fields from external sources (GPS, card info, transaction status, etc.)
+  // Uses Mixed type so any shape can be stored without schema changes.
+  @Prop({ type: Object })
+  metadata?: Record<string, unknown>;
 }
 
 export const ExpenseSchema = SchemaFactory.createForClass(Expense);
