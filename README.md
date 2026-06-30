@@ -175,7 +175,7 @@ The API is ready to be deployed as a free **Web Service** on [Render](https://re
 | Field | Value |
 |---|---|
 | **Environment** | `Node` |
-| **Build Command** | `npm run build` |
+| **Build Command** | `npm install --include=dev && npm run build` |
 | **Start Command** | `node dist/main` |
 | **Branch** | `main` |
 
@@ -186,7 +186,9 @@ The API is ready to be deployed as a free **Web Service** on [Render](https://re
 | `MONGODB_URI` | Your MongoDB Atlas cluster URI |
 | `NODE_ENV` | `production` |
 
-> `PORT` does not need to be set — Render injects it automatically at runtime.
+> **Note:** `PORT` does not need to be set — Render injects it automatically at runtime.
+>
+> The build command uses `--include=dev` because Render sets `NODE_ENV=production`, which causes npm to skip `devDependencies` by default. The NestJS CLI (`nest build`) lives in `devDependencies` and is required to compile the TypeScript source.
 
 5. Click **Deploy**. Render will run the build and start the service.
 
