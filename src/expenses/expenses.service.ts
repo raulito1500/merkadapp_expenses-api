@@ -1,19 +1,27 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ExpensesRepository } from './expenses.repository';
+import { ExpensesRepository, FindExpensesFilter } from './expenses.repository';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { IngestExpenseDto } from './dto/ingest-expense.dto';
-import { ExpenseDocument } from './schemas/expense.schema';
+import { Expense, ExpenseDocument } from './schemas/expense.schema';
 
 @Injectable()
 export class ExpensesService {
   constructor(private readonly expensesRepository: ExpensesRepository) {}
 
-  findAll(): Promise<ExpenseDocument[]> {
-    return this.expensesRepository.findAll();
+  findAll(filter?: FindExpensesFilter): Promise<ExpenseDocument[]> {
+    return this.expensesRepository.findAll(filter);
   }
 
   create(dto: CreateExpenseDto): Promise<ExpenseDocument> {
-    return this.expensesRepository.create({ ...dto, date: new Date(dto.date) });
+    return this.expensesRepository.create({
+      ...dto,
+      groupId: dto.groupId ?? null,
+      date: new Date(dto.date),
+    } as Partial<Expense>);
+  }
+
+  move(id: string, groupId: string | null): Promise<ExpenseDocument | null> {
+    return this.expensesRepository.updateGroupId(id, groupId);
   }
 
   ingest(dto: IngestExpenseDto): Promise<ExpenseDocument> {
@@ -29,6 +37,7 @@ export class ExpensesService {
       description,
       owner,
       merchant,
+      paidBy: owner, // ingest has no concept of a payer distinct from the owner
       amount: parsedAmount,
       currency: 'COP',
       date: new Date(),

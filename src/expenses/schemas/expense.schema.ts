@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 
 export type ExpenseDocument = HydratedDocument<Expense>;
 
@@ -22,6 +22,14 @@ export class Expense {
 
   @Prop({ required: true })
   owner: string;
+
+  // Who actually paid for the expense, used by the group balance summary.
+  @Prop({ required: true })
+  paidBy: string;
+
+  // null = private expense, only visible to its owner. Set = shared with the group's members.
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Group', default: null })
+  groupId: MongooseSchema.Types.ObjectId | null;
 
   // Flexible bag for fields from external sources (GPS, card info, transaction status, etc.)
   // Uses Mixed type so any shape can be stored without schema changes.

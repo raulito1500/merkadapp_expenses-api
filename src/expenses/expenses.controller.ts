@@ -4,7 +4,10 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
+  Query,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -18,6 +21,8 @@ import {
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { IngestExpenseDto } from './dto/ingest-expense.dto';
+import { FindExpensesQueryDto } from './dto/find-expenses-query.dto';
+import { MoveExpenseDto } from './dto/move-expense.dto';
 
 @ApiTags('expenses')
 @Controller('expenses')
@@ -26,10 +31,17 @@ export class ExpensesController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'List all expenses' })
+  @ApiOperation({
+    summary:
+      "List expenses, optionally filtered by group or by an owner's private expenses",
+  })
   @ApiOkResponse({ description: 'Expenses sorted by date, most recent first' })
-  findAll() {
-    return this.expensesService.findAll();
+  findAll(@Query() query: FindExpensesQueryDto) {
+    return this.expensesService.findAll({
+      groupId: query.groupId,
+      owner: query.owner,
+      personal: query.personal === 'true',
+    });
   }
 
   @Post()
@@ -40,15 +52,29 @@ export class ExpensesController {
     return this.expensesService.create(createExpenseDto);
   }
 
+  @Patch(':id/group')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Move an expense to a different group, or back to private (groupId: null)',
+  })
+  move(@Param('id') id: string, @Body() dto: MoveExpenseDto) {
+    return this.expensesService.move(id, dto.groupId ?? null);
+  }
+
   @Post('ingest')
   @HttpCode(HttpStatus.CREATED)
   // Override global ValidationPipe for this route only:
   // - whitelist: false  → unknown fields are NOT stripped (needed for open-ended metadata)
   // - transform: true   → class-validator decorators still run on declared fields
   @UsePipes(new ValidationPipe({ whitelist: false, transform: true }))
-  @ApiOperation({ summary: 'Ingest an expense from an external source (e.g. iOS Wallet)' })
+  @ApiOperation({
+    summary: 'Ingest an expense from an external source (e.g. iOS Wallet)',
+  })
   @ApiBody({ type: IngestExpenseDto })
-  @ApiCreatedResponse({ description: 'External expense ingested and normalized successfully' })
+  @ApiCreatedResponse({
+    description: 'External expense ingested and normalized successfully',
+  })
   ingest(@Body() dto: IngestExpenseDto) {
     return this.expensesService.ingest(dto);
   }

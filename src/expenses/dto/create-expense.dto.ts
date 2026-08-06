@@ -3,6 +3,7 @@ import {
   IsNumber,
   IsDateString,
   IsOptional,
+  IsMongoId,
   Min,
   IsNotEmpty,
 } from 'class-validator';
@@ -52,4 +53,21 @@ export class CreateExpenseDto {
   @IsString()
   @IsNotEmpty()
   owner: string;
+
+  @ApiProperty({
+    example: 'Raul',
+    description: 'Name of the group member who actually paid',
+  })
+  @IsString()
+  @IsNotEmpty()
+  paidBy: string;
+
+  @ApiPropertyOptional({
+    example: '64f1a2b3c4d5e6f7a8b9c0d1',
+    description:
+      'Target group id. Omit to keep the expense private (visible only to its owner).',
+  })
+  @IsOptional()
+  @IsMongoId()
+  groupId?: string;
 }

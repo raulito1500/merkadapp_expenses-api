@@ -17,5 +17,6 @@ import {
     ExpensesService,
     { provide: ExpensesRepository, useClass: ExpensesMongoRepository },
   ],
+  exports: [ExpensesService],
 })
 export class ExpensesModule {}
