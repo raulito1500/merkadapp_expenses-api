@@ -23,6 +23,7 @@ async function bootstrap() {
     )
     .setVersion('1.0')
     .addTag('expenses', 'Expense operations')
+    .addTag('groups', 'Group operations')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

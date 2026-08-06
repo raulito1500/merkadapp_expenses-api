@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import configuration from './config/configuration';
 import { ExpensesModule } from './expenses/expenses.module';
+import { GroupsModule } from './groups/groups.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ExpensesModule } from './expenses/expenses.module';
       inject: [ConfigService],
     }),
     ExpensesModule,
+    GroupsModule,
   ],
 })
 export class AppModule {}
