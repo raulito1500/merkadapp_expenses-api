@@ -1,9 +1,9 @@
 # Merkadapp Expenses API
 
-REST API for tracking and managing personal and shared expenses across groups of people. Supports recording individual expenses with date, merchant, amount, and currency information. Designed to evolve into full group expense management with automatic debt simplification and balance calculation.
+REST API for tracking personal and shared expenses across groups of people. Supports recording individual expenses, organizing them into groups, calculating per-member balances, and ingesting transactions from external sources such as iOS Wallet.
 
-Part of the Merkadapp portfolio ecosystem:
-- [merkadapp](https://github.com/raulito1500/merkadapp) — REST API in Go + MongoDB
+Part of the Merkadapp ecosystem:
+- [merkadapp](https://github.com/raulito1500/merkadapp) — Go + MongoDB backend (bills, products, market lists)
 - [merkadapp_frontend](https://github.com/raulito1500/merkadapp_frontend) — React SPA
 
 ---
@@ -19,14 +19,14 @@ Part of the Merkadapp portfolio ecosystem:
 | Mongoose | 8.x | MongoDB ODM |
 | @nestjs/swagger | 8.x | Auto-generated OpenAPI documentation |
 | class-validator | 0.14.x | Declarative DTO validation |
-| class-transformer | 0.5.x | JSON-to-class instance transformation |
+| class-transformer | 0.5.x | JSON-to-class transformation |
 | Jest | 29.x | Unit and integration testing |
 
 ---
 
 ## Architecture
 
-The API enforces strict layer separation within each domain module:
+Each domain is a self-contained NestJS module with strict layer separation:
 
 ```
 HTTP Request
@@ -43,7 +43,7 @@ HTTP Request
        │
        ▼
 ┌─────────────┐
-│ Repository  │  Data access: MongoDB queries via Mongoose
+│ Repository  │  Data access: abstract class + Mongoose implementation
 └──────┬──────┘
        │
        ▼
@@ -52,7 +52,7 @@ HTTP Request
 └─────────────┘
 ```
 
-Each domain is a self-contained NestJS module. The current implementation includes the `expenses` module; the roadmap includes `groups`, `members`, and `settlements`.
+The API currently implements two modules: `expenses` and `groups`.
 
 ---
 
@@ -60,72 +60,143 @@ Each domain is a self-contained NestJS module. The current implementation includ
 
 ```
 src/
-├── main.ts                      # Bootstrap: Swagger, ValidationPipe, CORS, listen
-├── app.module.ts                # Root module: ConfigModule + MongooseModule + domains
+├── main.ts                          # Bootstrap: Swagger, ValidationPipe, CORS, listen
+├── app.module.ts                    # Root module: ConfigModule + MongooseModule + domains
 ├── config/
-│   └── configuration.ts        # Config factory loaded from .env
-└── expenses/
-    ├── expenses.module.ts       # NestJS module: wires controller, service, providers
-    ├── expenses.controller.ts   # HTTP routes (GET, POST)
-    ├── expenses.service.ts      # Business logic layer
-    ├── expenses.repository.ts   # Data access (abstract class + Mongoose implementation)
+│   └── configuration.ts            # Config factory loaded from .env
+├── expenses/
+│   ├── expenses.module.ts
+│   ├── expenses.controller.ts       # GET /expenses, POST /expenses, PATCH /expenses/:id/group, POST /expenses/ingest
+│   ├── expenses.service.ts
+│   ├── expenses.repository.ts       # Abstract class + MongoRepository implementation
+│   ├── expenses.service.spec.ts
+│   ├── expenses.controller.spec.ts
+│   ├── schemas/
+│   │   └── expense.schema.ts
+│   └── dto/
+│       ├── create-expense.dto.ts
+│       ├── find-expenses-query.dto.ts
+│       ├── ingest-expense.dto.ts
+│       └── move-expense.dto.ts
+└── groups/
+    ├── groups.module.ts
+    ├── groups.controller.ts         # GET /groups, GET /groups/:id, GET /groups/:id/summary, POST /groups
+    ├── groups.service.ts
+    ├── groups.repository.ts         # Abstract class + MongoRepository implementation
+    ├── groups.service.spec.ts
+    ├── groups.controller.spec.ts
     ├── schemas/
-    │   └── expense.schema.ts    # Mongoose schema with @Prop decorators
+    │   └── group.schema.ts
     └── dto/
-        └── create-expense.dto.ts  # Input validation with class-validator
+        ├── create-group.dto.ts
+        ├── find-groups-query.dto.ts
+        └── group-summary.dto.ts
 ```
 
 ---
 
 ## API Reference
 
+Interactive documentation is available at `/api-docs` when the server is running.
+
 ### Expenses
 
-| Method | Path | Description | Body | Response |
-|---|---|---|---|---|
-| `GET` | `/expenses` | List all expenses | — | `200` Array of expenses |
-| `POST` | `/expenses` | Record a new expense | `CreateExpenseDto` | `201` Created expense |
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/expenses` | List expenses. Optional query params: `groupId`, `owner`, `personal=true` |
+| `POST` | `/expenses` | Record a new expense |
+| `PATCH` | `/expenses/:id/group` | Move an expense to a different group, or back to private (`groupId: null`) |
+| `POST` | `/expenses/ingest` | Ingest an expense from an external source (e.g. iOS Wallet) |
 
-### Expense model
+#### Expense model
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `description` | `string` | ✅ | Short description of the expense |
-| `merchant` | `string` | ❌ | Name of the merchant or place |
+| `merchant` | `string` | — | Name of the merchant or place |
 | `amount` | `number` | ✅ | Amount (≥ 0) |
-| `currency` | `string` | ✅ | ISO 4217 currency code (e.g. `USD`, `COP`) |
+| `currency` | `string` | ✅ | ISO 4217 currency code (e.g. `COP`, `USD`) |
 | `date` | `string` (ISO 8601) | ✅ | Date of the expense |
 | `owner` | `string` | ✅ | Name or alias of the person recording the expense |
+| `paidBy` | `string` | ✅ | Name of the member who actually paid (used for balance calculation) |
+| `groupId` | `ObjectId \| null` | — | Target group. `null` = private expense visible only to its owner |
+| `metadata` | `Record<string, unknown>` | — | Flexible bag for external source fields (GPS, card info, transaction status, etc.) |
 | `createdAt` | `Date` | auto | Creation timestamp |
 | `updatedAt` | `Date` | auto | Last update timestamp |
 
-Interactive documentation is available at `/api-docs` when the server is running.
+#### Ingest endpoint
+
+`POST /expenses/ingest` is designed for external sources that send amount as a formatted string. The service normalizes it across locale formats before storing:
+
+| Format | Example | Interpreted as |
+|---|---|---|
+| COP (dot as thousands separator) | `"$ 59.900"` | `59900` |
+| US decimal | `"59.90"` | `59.9` |
+| EU decimal (comma separator) | `"59,90"` | `59.9` |
+| Integer | `"59900"` | `59900` |
+
+Unknown fields (GPS coordinates, card name, transaction status) are stored as-is in `metadata` without schema changes.
+
+### Groups
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/groups` | List groups where `owner` is the creator or a member. Query param: `owner` |
+| `GET` | `/groups/:id` | Get a single group |
+| `GET` | `/groups/:id/summary` | Per-currency balance summary: total spent, per-person share, and individual balance for each member |
+| `POST` | `/groups` | Create a group |
+
+#### Group model
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | ✅ | Group name |
+| `owner` | `string` | ✅ | Creator's name or alias |
+| `members` | `string[]` | — | Member names. The owner is always included (deduplication applied) |
+
+#### Balance summary response
+
+`GET /groups/:id/summary` returns one entry per currency found in the group's expenses:
+
+```json
+[
+  {
+    "currency": "COP",
+    "total": 120000,
+    "perPersonShare": 40000,
+    "members": [
+      { "name": "Raul",  "paid": 90000, "balance": 50000  },
+      { "name": "Manu",  "paid": 30000, "balance": -10000 },
+      { "name": "Diana", "paid": 0,     "balance": -40000 }
+    ]
+  }
+]
+```
+
+A positive balance means the member paid more than their share. A negative balance means they owe the group.
 
 ---
 
 ## Local Setup
 
-### Prerequisites
-
-- Node.js LTS (22.x recommended)
-- A running MongoDB instance (local on port `27017`) or a MongoDB Atlas URI
-
-### Installation
+**Prerequisites:** Node.js LTS (22.x) and a MongoDB instance (local or [Atlas free tier](https://www.mongodb.com/cloud/atlas))
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/raulito1500/merkadapp_expenses-api.git
 cd merkadapp_expenses-api
 
-# 2. Install dependencies
 npm install
 
-# 3. Set up environment variables
 cp .env.example .env
 # Edit .env with your MongoDB URI
+
+npm run start:dev
 ```
 
-### Environment Variables
+Server: `http://localhost:3000`  
+Swagger UI: `http://localhost:3000/api-docs`
+
+### Environment variables
 
 | Variable | Description | Example |
 |---|---|---|
@@ -133,44 +204,33 @@ cp .env.example .env
 | `MONGODB_URI` | MongoDB connection URI | `mongodb://localhost:27017/merkadapp_expenses` |
 | `NODE_ENV` | Execution environment | `development` |
 
-### Running the app
+### Running
 
 ```bash
-# Development (watch mode — reloads on save)
+# Development (watch mode)
 npm run start:dev
 
-# Production (requires a prior build)
+# Production
 npm run build
 npm run start:prod
 ```
 
-Server: `http://localhost:3000`
-Swagger UI: `http://localhost:3000/api-docs`
-
 ### Testing
 
 ```bash
-# Unit tests
-npm run test
-
-# Watch mode
-npm run test:watch
-
-# Coverage report
-npm run test:cov
+npm run test        # Unit tests
+npm run test:watch  # Watch mode
+npm run test:cov    # Coverage report
 ```
 
 ---
 
 ## Deploy on Render
 
-The API is ready to be deployed as a free **Web Service** on [Render](https://render.com).
+The API is ready to deploy as a free Web Service on [Render](https://render.com).
 
-### Steps
-
-1. Create a Render account and connect your GitHub repository.
-2. Select **New → Web Service**.
-3. Configure the service:
+1. Create a Render account and connect the GitHub repository.
+2. Select **New → Web Service** and configure:
 
 | Field | Value |
 |---|---|
@@ -179,25 +239,21 @@ The API is ready to be deployed as a free **Web Service** on [Render](https://re
 | **Start Command** | `node dist/main` |
 | **Branch** | `main` |
 
-4. Add environment variables under **Environment → Add Environment Variable**:
+3. Add environment variables:
 
 | Variable | Value |
 |---|---|
 | `MONGODB_URI` | Your MongoDB Atlas cluster URI |
 | `NODE_ENV` | `production` |
 
-> **Note:** `PORT` does not need to be set — Render injects it automatically at runtime.
->
-> The build command uses `--include=dev` because Render sets `NODE_ENV=production`, which causes npm to skip `devDependencies` by default. The NestJS CLI (`nest build`) lives in `devDependencies` and is required to compile the TypeScript source.
-
-5. Click **Deploy**. Render will run the build and start the service.
+> `PORT` does not need to be set — Render injects it automatically.  
+> `--include=dev` is required because Render sets `NODE_ENV=production`, which skips `devDependencies` by default. The NestJS CLI (`nest build`) lives there and is needed to compile TypeScript.
 
 ---
 
 ## Roadmap
 
-- [ ] `members` module — member CRUD
-- [ ] `groups` module — group management with member assignment
-- [ ] Full `Expense` model — categories, payer reference, group, split method, embedded splits
-- [ ] `settlements` module — automatic debt calculation with greedy simplification algorithm
+- [x] `expenses` module — record, list and filter expenses
+- [x] `groups` module — create groups, list by member, per-currency balance summary
+- [ ] `settlements` module — automatic debt simplification with minimum-transfer algorithm
 - [ ] Authentication (JWT)
