@@ -8,10 +8,13 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
@@ -23,6 +26,8 @@ import { CreateExpenseDto } from './dto/create-expense.dto';
 import { IngestExpenseDto } from './dto/ingest-expense.dto';
 import { FindExpensesQueryDto } from './dto/find-expenses-query.dto';
 import { MoveExpenseDto } from './dto/move-expense.dto';
+import { AuthGuard } from '../auth/auth.guard';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @ApiTags('expenses')
 @Controller('expenses')
@@ -30,29 +35,41 @@ export class ExpensesController {
   constructor(private readonly expensesService: ExpensesService) {}
 
   @Get()
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      "List expenses, optionally filtered by group or by an owner's private expenses",
+      "List expenses, optionally filtered by group or by the caller's private expenses",
   })
   @ApiOkResponse({ description: 'Expenses sorted by date, most recent first' })
-  findAll(@Query() query: FindExpensesQueryDto) {
+  findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: FindExpensesQueryDto,
+  ) {
     return this.expensesService.findAll({
       groupId: query.groupId,
-      owner: query.owner,
+      owner: req.user.uid,
       personal: query.personal === 'true',
     });
   }
 
   @Post()
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Record a new expense' })
   @ApiCreatedResponse({ description: 'Expense created successfully' })
-  create(@Body() createExpenseDto: CreateExpenseDto) {
-    return this.expensesService.create(createExpenseDto);
+  create(
+    @Req() req: AuthenticatedRequest,
+    @Body() createExpenseDto: CreateExpenseDto,
+  ) {
+    return this.expensesService.create(createExpenseDto, req.user.uid);
   }
 
   @Patch(':id/group')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:

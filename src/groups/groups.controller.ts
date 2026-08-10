@@ -6,9 +6,11 @@ import {
   HttpStatus,
   Param,
   Post,
-  Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiOperation,
   ApiOkResponse,
   ApiCreatedResponse,
@@ -16,23 +18,26 @@ import {
 } from '@nestjs/swagger';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
-import { FindGroupsQueryDto } from './dto/find-groups-query.dto';
+import { AuthGuard } from '../auth/auth.guard';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @ApiTags('groups')
 @Controller('groups')
+@UseGuards(AuthGuard)
+@ApiBearerAuth()
 export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
 
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'List groups visible to an owner (owner or member of)',
+    summary: 'List groups visible to the caller (owner or member of)',
   })
   @ApiOkResponse({
-    description: 'Groups where the given owner is the creator or a member',
+    description: 'Groups where the caller is the creator or a member',
   })
-  findAllForOwner(@Query() query: FindGroupsQueryDto) {
-    return this.groupsService.findAllForOwner(query.owner);
+  findAllForOwner(@Req() req: AuthenticatedRequest) {
+    return this.groupsService.findAllForOwner(req.user.uid);
   }
 
   @Get(':id')
@@ -56,7 +61,7 @@ export class GroupsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a group' })
   @ApiCreatedResponse({ description: 'Group created successfully' })
-  create(@Body() dto: CreateGroupDto) {
-    return this.groupsService.create(dto);
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateGroupDto) {
+    return this.groupsService.create(dto, req.user.uid);
   }
 }

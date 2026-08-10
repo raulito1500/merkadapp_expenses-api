@@ -48,14 +48,6 @@ export class CreateExpenseDto {
 
   @ApiProperty({
     example: 'Raul',
-    description: 'Name or alias of the expense owner',
-  })
-  @IsString()
-  @IsNotEmpty()
-  owner: string;
-
-  @ApiProperty({
-    example: 'Raul',
     description: 'Name of the group member who actually paid',
   })
   @IsString()

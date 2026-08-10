@@ -53,15 +53,15 @@ describe('GroupsService', () => {
     it('dedupes the owner into the members list', async () => {
       const dto: CreateGroupDto = {
         name: 'Roommates',
-        owner: 'Raul',
         members: ['Manu', 'Raul', 'Diana'],
       };
       groupsRepository.create.mockResolvedValue(group);
 
-      await service.create(dto);
+      await service.create(dto, 'Raul');
 
       expect(groupsRepository.create).toHaveBeenCalledWith({
         ...dto,
+        owner: 'Raul',
         members: ['Raul', 'Manu', 'Diana'],
       });
     });

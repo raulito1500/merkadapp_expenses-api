@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
-  app.enableCors();
+  app.enableCors({ origin: configService.get<string[]>('corsOrigins') });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -24,6 +26,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('expenses', 'Expense operations')
     .addTag('groups', 'Group operations')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

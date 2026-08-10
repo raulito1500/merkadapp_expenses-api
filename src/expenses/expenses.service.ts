@@ -12,9 +12,10 @@ export class ExpensesService {
     return this.expensesRepository.findAll(filter);
   }
 
-  create(dto: CreateExpenseDto): Promise<ExpenseDocument> {
+  create(dto: CreateExpenseDto, owner: string): Promise<ExpenseDocument> {
     return this.expensesRepository.create({
       ...dto,
+      owner,
       groupId: dto.groupId ?? null,
       date: new Date(dto.date),
     } as Partial<Expense>);

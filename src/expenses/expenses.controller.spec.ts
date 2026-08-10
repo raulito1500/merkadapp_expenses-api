@@ -4,6 +4,8 @@ import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { FindExpensesQueryDto } from './dto/find-expenses-query.dto';
 import { ExpenseDocument } from './schemas/expense.schema';
+import { AuthGuard } from '../auth/auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 describe('ExpensesController', () => {
   let controller: ExpensesController;
@@ -15,10 +17,12 @@ describe('ExpensesController', () => {
     amount: 85000,
     currency: 'COP',
     date: new Date('2026-06-30'),
-    owner: 'Raul',
+    owner: 'user-123',
     paidBy: 'Raul',
     groupId: null,
   } as unknown as ExpenseDocument;
+
+  const req = { user: { uid: 'user-123' } } as AuthenticatedRequest;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -33,7 +37,10 @@ describe('ExpensesController', () => {
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get(ExpensesController);
     service = module.get(ExpensesService);
@@ -48,12 +55,12 @@ describe('ExpensesController', () => {
       service.findAll.mockResolvedValue([expense]);
       const query: FindExpensesQueryDto = {};
 
-      const result = await controller.findAll(query);
+      const result = await controller.findAll(req, query);
 
       expect(result).toEqual([expense]);
       expect(service.findAll).toHaveBeenCalledWith({
         groupId: undefined,
-        owner: undefined,
+        owner: 'user-123',
         personal: false,
       });
     });
@@ -61,32 +68,31 @@ describe('ExpensesController', () => {
     it('translates the personal query param to a boolean', async () => {
       service.findAll.mockResolvedValue([expense]);
 
-      await controller.findAll({ owner: 'Raul', personal: 'true' });
+      await controller.findAll(req, { personal: 'true' });
 
       expect(service.findAll).toHaveBeenCalledWith({
         groupId: undefined,
-        owner: 'Raul',
+        owner: 'user-123',
         personal: true,
       });
     });
   });
 
   describe('create', () => {
-    it('delegates creation to the service with the given dto', async () => {
+    it('delegates creation to the service with the caller as owner', async () => {
       const dto: CreateExpenseDto = {
         description: 'Team dinner',
         amount: 85000,
         currency: 'COP',
         date: '2026-06-30',
-        owner: 'Raul',
         paidBy: 'Raul',
       };
       service.create.mockResolvedValue(expense);
 
-      const result = await controller.create(dto);
+      const result = await controller.create(req, dto);
 
       expect(result).toEqual(expense);
-      expect(service.create).toHaveBeenCalledWith(dto);
+      expect(service.create).toHaveBeenCalledWith(dto, 'user-123');
     });
   });
 

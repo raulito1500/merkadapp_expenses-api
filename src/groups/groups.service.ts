@@ -16,9 +16,9 @@ export class GroupsService {
     private readonly expensesService: ExpensesService,
   ) {}
 
-  create(dto: CreateGroupDto): Promise<GroupDocument> {
-    const members = Array.from(new Set([dto.owner, ...(dto.members ?? [])]));
-    return this.groupsRepository.create({ ...dto, members });
+  create(dto: CreateGroupDto, owner: string): Promise<GroupDocument> {
+    const members = Array.from(new Set([owner, ...(dto.members ?? [])]));
+    return this.groupsRepository.create({ ...dto, owner, members });
   }
 
   findOne(id: string): Promise<GroupDocument | null> {

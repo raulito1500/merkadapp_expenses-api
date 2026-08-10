@@ -7,14 +7,6 @@ export class CreateGroupDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({
-    example: 'Raul',
-    description: 'Name or alias of the group creator',
-  })
-  @IsString()
-  @IsNotEmpty()
-  owner: string;
-
   @ApiPropertyOptional({
     example: ['Raul', 'Manu', 'Diana'],
     description:
