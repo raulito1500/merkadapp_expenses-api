@@ -5,11 +5,13 @@ import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 import { GroupsRepository, GroupsMongoRepository } from './groups.repository';
 import { ExpensesModule } from '../expenses/expenses.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Group.name, schema: GroupSchema }]),
     ExpensesModule,
+    UsersModule,
   ],
   controllers: [GroupsController],
   providers: [

@@ -7,10 +7,12 @@ import {
   ExpensesRepository,
   ExpensesMongoRepository,
 } from './expenses.repository';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Expense.name, schema: ExpenseSchema }]),
+    UsersModule,
   ],
   controllers: [ExpensesController],
   providers: [

@@ -1,9 +1,4 @@
-import {
-  IsBooleanString,
-  IsMongoId,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsBooleanString, IsMongoId, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class FindExpensesQueryDto {
@@ -14,11 +9,6 @@ export class FindExpensesQueryDto {
   @IsOptional()
   @IsMongoId()
   groupId?: string;
-
-  @ApiPropertyOptional({ example: 'Raul', description: 'Owner to filter by' })
-  @IsOptional()
-  @IsString()
-  owner?: string;
 
   @ApiPropertyOptional({
     example: 'true',

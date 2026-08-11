@@ -16,9 +16,9 @@ export class GroupsService {
     private readonly expensesService: ExpensesService,
   ) {}
 
-  create(dto: CreateGroupDto): Promise<GroupDocument> {
-    const members = Array.from(new Set([dto.owner, ...(dto.members ?? [])]));
-    return this.groupsRepository.create({ ...dto, members });
+  create(dto: CreateGroupDto, owner: string): Promise<GroupDocument> {
+    const members = Array.from(new Set([owner, ...(dto.members ?? [])]));
+    return this.groupsRepository.create({ ...dto, owner, members });
   }
 
   findOne(id: string): Promise<GroupDocument | null> {
@@ -53,11 +53,11 @@ export class GroupsService {
       const total = list.reduce((sum, expense) => sum + expense.amount, 0);
       const perPersonShare =
         group.members.length > 0 ? total / group.members.length : 0;
-      const members: GroupMemberBalance[] = group.members.map((name) => {
+      const members: GroupMemberBalance[] = group.members.map((uid) => {
         const paid = list
-          .filter((expense) => expense.paidBy === name)
+          .filter((expense) => expense.paidBy === uid)
           .reduce((sum, expense) => sum + expense.amount, 0);
-        return { name, paid, balance: paid - perPersonShare };
+        return { uid, paid, balance: paid - perPersonShare };
       });
       return { currency, total, perPersonShare, members };
     });

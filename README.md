@@ -203,6 +203,10 @@ Swagger UI: `http://localhost:3000/api-docs`
 | `PORT` | Server port | `3000` |
 | `MONGODB_URI` | MongoDB connection URI | `mongodb://localhost:27017/merkadapp_expenses` |
 | `NODE_ENV` | Execution environment | `development` |
+| `CORS_ORIGINS` | Comma-separated frontend origins allowed to call this API | `http://localhost:3001` |
+| `FIREBASE_PROJECT_ID` | From the Firebase service account JSON | `merkadapp-638bb` |
+| `FIREBASE_CLIENT_EMAIL` | From the Firebase service account JSON | `firebase-adminsdk-xxxxx@merkadapp-638bb.iam.gserviceaccount.com` |
+| `FIREBASE_PRIVATE_KEY` | From the Firebase service account JSON (keep the `\n` sequences as a single-line string) | `"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"` |
 
 ### Running
 
@@ -245,6 +249,10 @@ The API is ready to deploy as a free Web Service on [Render](https://render.com)
 |---|---|
 | `MONGODB_URI` | Your MongoDB Atlas cluster URI |
 | `NODE_ENV` | `production` |
+| `CORS_ORIGINS` | The deployed frontend URL(s), comma-separated |
+| `FIREBASE_PROJECT_ID` | From the Firebase service account JSON |
+| `FIREBASE_CLIENT_EMAIL` | From the Firebase service account JSON |
+| `FIREBASE_PRIVATE_KEY` | From the Firebase service account JSON |
 
 > `PORT` does not need to be set — Render injects it automatically.  
 > `--include=dev` is required because Render sets `NODE_ENV=production`, which skips `devDependencies` by default. The NestJS CLI (`nest build`) lives there and is needed to compile TypeScript.

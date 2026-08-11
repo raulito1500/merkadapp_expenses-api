@@ -68,16 +68,16 @@ describe('ExpensesService', () => {
         amount: 85000,
         currency: 'COP',
         date: '2026-06-30',
-        owner: 'Raul',
         paidBy: 'Raul',
       };
       repository.create.mockResolvedValue(expense);
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, 'Raul');
 
       expect(result).toEqual(expense);
       expect(repository.create).toHaveBeenCalledWith({
         ...dto,
+        owner: 'Raul',
         groupId: null,
         date: new Date(dto.date),
       });
@@ -89,16 +89,16 @@ describe('ExpensesService', () => {
         amount: 85000,
         currency: 'COP',
         date: '2026-06-30',
-        owner: 'Raul',
         paidBy: 'Raul',
         groupId: 'group-1',
       };
       repository.create.mockResolvedValue(expense);
 
-      await service.create(dto);
+      await service.create(dto, 'Raul');
 
       expect(repository.create).toHaveBeenCalledWith({
         ...dto,
+        owner: 'Raul',
         groupId: 'group-1',
         date: new Date(dto.date),
       });
