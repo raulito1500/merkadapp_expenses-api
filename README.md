@@ -257,11 +257,6 @@ The API is ready to deploy as a free Web Service on [Render](https://render.com)
 > `PORT` does not need to be set — Render injects it automatically.  
 > `--include=dev` is required because Render sets `NODE_ENV=production`, which skips `devDependencies` by default. The NestJS CLI (`nest build`) lives there and is needed to compile TypeScript.
 
----
+## License
 
-## Roadmap
-
-- [x] `expenses` module — record, list and filter expenses
-- [x] `groups` module — create groups, list by member, per-currency balance summary
-- [ ] `settlements` module — automatic debt simplification with minimum-transfer algorithm
-- [ ] Authentication (JWT)
+[PolyForm Noncommercial 1.0.0](LICENSE) — free to use, copy, modify and distribute for noncommercial purposes (personal, educational, portfolio). Commercial use requires permission from the author.
