@@ -91,9 +91,9 @@ describe('GroupsService', () => {
           total: 120000,
           perPersonShare: 40000,
           members: [
-            { name: 'Raul', paid: 90000, balance: 50000 },
-            { name: 'Manu', paid: 30000, balance: -10000 },
-            { name: 'Diana', paid: 0, balance: -40000 },
+            { uid: 'Raul', paid: 90000, balance: 50000 },
+            { uid: 'Manu', paid: 30000, balance: -10000 },
+            { uid: 'Diana', paid: 0, balance: -40000 },
           ],
         },
       ]);

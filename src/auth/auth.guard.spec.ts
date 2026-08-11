@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { AuthGuard } from './auth.guard';
+import { UsersService } from '../users/users.service';
 
 jest.mock('firebase-admin/app', () => ({
   getApps: jest.fn().mockReturnValue([]),
@@ -17,6 +18,7 @@ jest.mock('firebase-admin/auth', () => ({
 describe('AuthGuard', () => {
   let guard: AuthGuard;
   let verifyIdToken: jest.Mock;
+  let usersService: jest.Mocked<UsersService>;
 
   const createContext = (headers: Record<string, string>) =>
     ({
@@ -34,8 +36,11 @@ describe('AuthGuard', () => {
     const configService = {
       get: jest.fn().mockReturnValue('test-value'),
     } as unknown as ConfigService;
+    usersService = {
+      upsert: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<UsersService>;
 
-    guard = new AuthGuard(configService);
+    guard = new AuthGuard(configService, usersService);
   });
 
   it('initializes the firebase-admin app once', () => {
@@ -69,6 +74,7 @@ describe('AuthGuard', () => {
       uid: 'user-123',
       email: 'raul@example.com',
       name: 'Raul',
+      picture: 'https://lh3.googleusercontent.com/photo.jpg',
     });
     const request: Record<string, unknown> = {
       headers: { authorization: 'Bearer good-token' },
@@ -85,5 +91,21 @@ describe('AuthGuard', () => {
       email: 'raul@example.com',
       name: 'Raul',
     });
+    expect(usersService.upsert).toHaveBeenCalledWith({
+      uid: 'user-123',
+      email: 'raul@example.com',
+      displayName: 'Raul',
+      photoURL: 'https://lh3.googleusercontent.com/photo.jpg',
+    });
+  });
+
+  it('still allows the request through when the directory upsert fails', async () => {
+    verifyIdToken.mockResolvedValue({ uid: 'user-123' });
+    usersService.upsert.mockRejectedValue(new Error('db down'));
+    const context = createContext({ authorization: 'Bearer good-token' });
+
+    const result = await guard.canActivate(context);
+
+    expect(result).toBe(true);
   });
 });

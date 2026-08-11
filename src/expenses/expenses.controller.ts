@@ -28,11 +28,16 @@ import { FindExpensesQueryDto } from './dto/find-expenses-query.dto';
 import { MoveExpenseDto } from './dto/move-expense.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
+import { UsersService } from '../users/users.service';
+import { ExpenseDocument } from './schemas/expense.schema';
 
 @ApiTags('expenses')
 @Controller('expenses')
 export class ExpensesController {
-  constructor(private readonly expensesService: ExpensesService) {}
+  constructor(
+    private readonly expensesService: ExpensesService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Get()
   @UseGuards(AuthGuard)
@@ -43,15 +48,26 @@ export class ExpensesController {
       "List expenses, optionally filtered by group or by the caller's private expenses",
   })
   @ApiOkResponse({ description: 'Expenses sorted by date, most recent first' })
-  findAll(
+  async findAll(
     @Req() req: AuthenticatedRequest,
     @Query() query: FindExpensesQueryDto,
   ) {
-    return this.expensesService.findAll({
+    const expenses = await this.expensesService.findAll({
       groupId: query.groupId,
       owner: req.user.uid,
       personal: query.personal === 'true',
     });
+    return this.enrich(expenses);
+  }
+
+  private async enrich(expenses: ExpenseDocument[]) {
+    const uids = expenses.flatMap((expense) => [expense.owner, expense.paidBy]);
+    const usersByUid = await this.usersService.resolveMany(uids);
+    return expenses.map((expense) => ({
+      ...expense.toObject(),
+      owner: this.usersService.resolveOne(usersByUid, expense.owner),
+      paidBy: this.usersService.resolveOne(usersByUid, expense.paidBy),
+    }));
   }
 
   @Post()
