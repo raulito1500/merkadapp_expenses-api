@@ -4,7 +4,9 @@ import { GroupsService } from './groups.service';
 import { UsersService } from '../users/users.service';
 import { UserSummary } from '../users/dto/user-summary.dto';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { GroupDocument } from './schemas/group.schema';
+import { GroupCategory } from './group-category.enum';
 import { GroupCurrencySummary } from './dto/group-summary.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-request.interface';
@@ -44,6 +46,7 @@ describe('GroupsController', () => {
             findOne: jest.fn(),
             getSummary: jest.fn(),
             create: jest.fn(),
+            update: jest.fn(),
           },
         },
         {
@@ -121,6 +124,22 @@ describe('GroupsController', () => {
 
       expect(result).toEqual(group);
       expect(service.create).toHaveBeenCalledWith(dto, 'user-123');
+    });
+  });
+
+  describe('update', () => {
+    it('delegates to the service and returns the group enriched with user summaries', async () => {
+      const dto: UpdateGroupDto = { category: GroupCategory.TRAVEL };
+      service.update.mockResolvedValue(group);
+
+      const result = await controller.update('group-1', dto);
+
+      expect(result).toEqual({
+        ...rawGroup,
+        owner: ownerSummary,
+        members: [ownerSummary, memberSummary],
+      });
+      expect(service.update).toHaveBeenCalledWith('group-1', dto);
     });
   });
 

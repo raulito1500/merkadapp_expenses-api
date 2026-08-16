@@ -7,6 +7,10 @@ export abstract class GroupsRepository {
   abstract findById(id: string): Promise<GroupDocument | null>;
   abstract findVisibleToOwner(owner: string): Promise<GroupDocument[]>;
   abstract create(data: Partial<Group>): Promise<GroupDocument>;
+  abstract updateById(
+    id: string,
+    data: Partial<Group>,
+  ): Promise<GroupDocument | null>;
 }
 
 @Injectable()
@@ -30,5 +34,14 @@ export class GroupsMongoRepository implements GroupsRepository {
   async create(data: Partial<Group>): Promise<GroupDocument> {
     const group = new this.groupModel(data);
     return group.save();
+  }
+
+  updateById(
+    id: string,
+    data: Partial<Group>,
+  ): Promise<GroupDocument | null> {
+    return this.groupModel
+      .findByIdAndUpdate(id, data, { new: true })
+      .exec();
   }
 }

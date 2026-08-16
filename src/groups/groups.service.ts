@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { GroupsRepository } from './groups.repository';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { GroupDocument } from './schemas/group.schema';
+import { GroupCategory } from './group-category.enum';
 import {
   GroupCurrencySummary,
   GroupMemberBalance,
@@ -18,7 +20,13 @@ export class GroupsService {
 
   create(dto: CreateGroupDto, owner: string): Promise<GroupDocument> {
     const members = Array.from(new Set([owner, ...(dto.members ?? [])]));
-    return this.groupsRepository.create({ ...dto, owner, members });
+    const category = dto.category ?? GroupCategory.OTHER;
+    return this.groupsRepository.create({
+      ...dto,
+      owner,
+      members,
+      category,
+    });
   }
 
   findOne(id: string): Promise<GroupDocument | null> {
@@ -27,6 +35,14 @@ export class GroupsService {
 
   findAllForOwner(owner: string): Promise<GroupDocument[]> {
     return this.groupsRepository.findVisibleToOwner(owner);
+  }
+
+  async update(id: string, dto: UpdateGroupDto): Promise<GroupDocument> {
+    const group = await this.groupsRepository.updateById(id, dto);
+    if (!group) {
+      throw new NotFoundException(`Group ${id} not found`);
+    }
+    return group;
   }
 
   async getSummary(id: string): Promise<GroupCurrencySummary[]> {

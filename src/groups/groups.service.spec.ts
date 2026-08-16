@@ -4,7 +4,9 @@ import { GroupsService } from './groups.service';
 import { GroupsRepository } from './groups.repository';
 import { ExpensesService } from '../expenses/expenses.service';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { GroupDocument } from './schemas/group.schema';
+import { GroupCategory } from './group-category.enum';
 import { ExpenseDocument } from '../expenses/schemas/expense.schema';
 
 describe('GroupsService', () => {
@@ -29,6 +31,7 @@ describe('GroupsService', () => {
             findById: jest.fn(),
             findVisibleToOwner: jest.fn(),
             create: jest.fn(),
+            updateById: jest.fn(),
           },
         },
         {
@@ -63,7 +66,56 @@ describe('GroupsService', () => {
         ...dto,
         owner: 'Raul',
         members: ['Raul', 'Manu', 'Diana'],
+        category: GroupCategory.OTHER,
       });
+    });
+
+    it('defaults to no category when none is provided', async () => {
+      const dto: CreateGroupDto = { name: 'Roommates' };
+      groupsRepository.create.mockResolvedValue(group);
+
+      await service.create(dto, 'Raul');
+
+      expect(groupsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ category: GroupCategory.OTHER }),
+      );
+    });
+
+    it('keeps an explicit category when provided', async () => {
+      const dto: CreateGroupDto = {
+        name: 'Roommates',
+        category: GroupCategory.HOME,
+      };
+      groupsRepository.create.mockResolvedValue(group);
+
+      await service.create(dto, 'Raul');
+
+      expect(groupsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ category: GroupCategory.HOME }),
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('throws when the group does not exist', async () => {
+      groupsRepository.updateById.mockResolvedValue(null);
+
+      await expect(
+        service.update('missing', {} as UpdateGroupDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('delegates to the repository and returns the updated group', async () => {
+      const dto: UpdateGroupDto = { category: GroupCategory.TRAVEL };
+      groupsRepository.updateById.mockResolvedValue(group);
+
+      const result = await service.update('group-1', dto);
+
+      expect(result).toBe(group);
+      expect(groupsRepository.updateById).toHaveBeenCalledWith(
+        'group-1',
+        dto,
+      );
     });
   });
 

@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { GroupCategory } from '../group-category.enum';
 
 export type GroupDocument = HydratedDocument<Group>;
 
@@ -13,6 +14,14 @@ export class Group {
 
   @Prop({ type: [String], default: [] })
   members: string[];
+
+  @Prop({
+    type: String,
+    enum: GroupCategory,
+    default: GroupCategory.OTHER,
+    required: true,
+  })
+  category: GroupCategory;
 }
 
 export const GroupSchema = SchemaFactory.createForClass(Group);

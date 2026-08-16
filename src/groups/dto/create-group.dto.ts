@@ -1,5 +1,6 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { GroupCategory } from '../group-category.enum';
 
 export class CreateGroupDto {
   @ApiProperty({ example: 'Roommates', description: 'Group name' })
@@ -16,4 +17,13 @@ export class CreateGroupDto {
   @IsArray()
   @IsString({ each: true })
   members?: string[];
+
+  @ApiPropertyOptional({
+    enum: GroupCategory,
+    example: GroupCategory.HOME,
+    description: 'Group category, used to pick an icon in the UI. Defaults to OTHER.',
+  })
+  @IsOptional()
+  @IsEnum(GroupCategory)
+  category?: GroupCategory;
 }

@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -18,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { GroupCurrencySummary } from './dto/group-summary.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
@@ -83,6 +85,19 @@ export class GroupsController {
   @ApiCreatedResponse({ description: 'Group created successfully' })
   create(@Req() req: AuthenticatedRequest, @Body() dto: CreateGroupDto) {
     return this.groupsService.create(dto, req.user.uid);
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update a group' })
+  @ApiOkResponse({ description: 'Group updated successfully' })
+  async update(@Param('id') id: string, @Body() dto: UpdateGroupDto) {
+    const group = await this.groupsService.update(id, dto);
+    const usersByUid = await this.usersService.resolveMany([
+      group.owner,
+      ...group.members,
+    ]);
+    return this.enrichGroup(group, usersByUid);
   }
 
   private enrichGroup(
